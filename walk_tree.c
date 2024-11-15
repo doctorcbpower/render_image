@@ -3,7 +3,9 @@
 #include <string.h>
 #include <math.h>
 
+#ifdef ENABLE_OPENMP
 #include "omp.h"
+#endif
 
 #include "header.h"
 

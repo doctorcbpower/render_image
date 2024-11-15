@@ -52,10 +52,10 @@ struct point {
   float dist_ngb;
 };
 
-#define NTAB 100
-float rh_table[NTAB];
-float kernel_table[NTAB];
-float integral_table[NTAB];
+//#define NTAB 100
+//extern float rh_table[NTAB];
+//extern float kernel_table[NTAB];
+//extern float integral_table[NTAB];
 
 struct tree_node *add_to_node(struct tree_node *, float, float, float);
 void get_node(struct tree_node *, float, int *, struct link_list **);
@@ -94,19 +94,21 @@ struct sim_info {
   int npart[6],nall[6];
   double massarr[6];
   double time;
+  double redshift;
   int NumFiles;
   double BoxSize;
   double Omega0,OmegaLambda,HubbleParam;  
   int SnapFormat;
 };
 
+void check_input_filenames(char *, char *, int, int *);
 void read_hdf5_header(char *, struct sim_info *, long long *);
 void read_gadget_binary_header(char *, struct sim_info *, long long *);
 void read_particles_from_hdf5(char *, float *, float *, float *, int *, int, long long *);
 void read_particles_from_gadget_binary(char *, float *, float *, float *, int *, int, long long *);
 void select_particles(float *, float *, float *, int *, double, long long, float, float, float, float, int, long long *);
-void split_across_tasks_as_slabs(float *, float *, float *, int **, long long, float);
-void smooth_to_mesh(long long, float *, int, float *, float *, float *, float, float, float, float, float, int, int, float *);
+void split_across_tasks_as_slabs(float *, float *, float *, long long *, float, float, float, float);
+void smooth_to_mesh(long long, float *, float *, float *, float *, float, float, float, float, float, int, int, float *);
 
 void write_to_ppm(char *, int, int, int, float *);
 

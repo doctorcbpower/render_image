@@ -34,12 +34,14 @@ float cumulative_cubic_spline_interpolant(float);
 void tabulate_integral(void);
 float get_integral_value(float);
 
+void check_input_filenames(char *, char *, int, int *);
 void read_hdf5_header(char *, struct sim_info *, long long *);
 void read_gadget_binary_header(char *, struct sim_info *, long long *);
 void read_particles_from_hdf5(char *, float *, float *, float *, int *, int, long long *);
 void read_particles_from_gadget_binary(char *, float *, float *, float *, int *, int, long long *);
 void select_particles(float *, float *, float *, int *, double, long long, float, float, float, float, int, long long *);
-void smooth_to_mesh(long long, float *, int, float *, float *, float *, float, float, float, float, float, int, int, float *);
+void smooth_to_mesh(long long, float *, float *, float *, float *, float, float, float, float, float, int, int, float *);
+void split_across_tasks_as_slabs(float *, float *, float *, long long *, float, float, float, float);
 
 void write_to_ppm(char *, int, int, int, float *);
 void write_to_png(char *, int, int,float *);

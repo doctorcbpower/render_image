@@ -3,6 +3,11 @@
 
 #include "header.h"
 
+#define NTAB 100
+static float rh_table[NTAB];
+static float kernel_table[NTAB];
+static float integral_table[NTAB];
+
 float cubic_spline_kernel(float u)
 {
   float prefac;

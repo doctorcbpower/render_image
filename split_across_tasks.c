@@ -1,37 +1,61 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "header.h"
-#include "mpi.h"
+#include <math.h>
 
-void split_across_tasks_as_slabs(float *x, float *y, float *z, int **pid, long long NumPart, float BoxSize)
+#include "header.h"
+
+#ifdef ENABLE_MPI
+#include "mpi.h"
+#endif
+
+float get_rand(int seed)
+{
+  return (float)rand()/RAND_MAX;
+}
+
+#ifdef ENABLE_MPI
+void split_across_tasks_as_slabs(float *x, float *y, float *z, long long *NumPart, float xc, float yc, float zc, float BoxSize)
 {
   int i,j;
   int nx;
   long long num_tot, num_proc, *num_x, *num_gather;
-  /*  
+  int **pid;
+
+#ifdef SCATTER_DECOMPOSITION
+  int seed=87761;
+  srand(seed);
+#endif
+  
   num_x=(long long *)malloc(sizeof(long long)*NTask);
   num_gather=(long long *)malloc(sizeof(long long)*NTask);
-  
+
+  pid = (int**)malloc(sizeof(int*)*NTask);
+  for(i=0;i<NTask;i++)
+    pid[i] = (int*)malloc(2*sizeof(int)*(*NumPart/NTask));
+
   for(i=0;i<NTask;i++)
     num_x[i]=0;
-  
-  for(i=0;i<NumPart;i++)
+
+  for(i=0;i<*NumPart;i++)
     {
-      nx=(int)(NTask*(x[i]/BoxSize));   //Note that (int) always rounds down
-#ifdef CIC
-      if(nx<0) nx+=NTask;
-      if(nx>=NTask) nx-=NTask;
+#ifndef SCATTER_DECOMPOSITION  
+      nx=(int)(NTask*((x[i]-xc)/BoxSize+0.5));   //Note that (int) always rounds down
 #else
+      nx=(int)NTask*get_rand(seed);
+#endif      
       if(nx<0) nx=0;
       if(nx>=NTask) nx=NTask-1;
-#endif      
       pid[nx][num_x[nx]]=i;
       num_x[nx]++;
     }
 
   for(i=0;i<NTask;i++)
-    num_gather[i]=0;
+    printf("%d %lld %lld\n",i,num_x[i],*NumPart);
   
+  
+  for(i=0;i<NTask;i++)
+    num_gather[i]=0;
+
   for(i=0;i<NTask;i++)
     {
       if(i!=ThisTask)
@@ -57,12 +81,10 @@ void split_across_tasks_as_slabs(float *x, float *y, float *z, int **pid, long l
   fflush(stdout);  
 
   float *posx, *posy, *posz;
-  int *partid;
   
   posx = (float*)malloc(sizeof(float)*num_proc);
   posy = (float*)malloc(sizeof(float)*num_proc);
   posz = (float*)malloc(sizeof(float)*num_proc);
-  partid = (int*)malloc(sizeof(int)*num_proc);  
 
   long long noffset=0;
 
@@ -74,7 +96,6 @@ void split_across_tasks_as_slabs(float *x, float *y, float *z, int **pid, long l
       posx[j+noffset]=x[pid[ThisTask][j]];
       posy[j+noffset]=y[pid[ThisTask][j]];
       posz[j+noffset]=z[pid[ThisTask][j]];
-      partid[j+noffset]=pid[ThisTask][j];      
     }
 
   int nsend,nrec, *isend, *irec;
@@ -126,47 +147,43 @@ void split_across_tasks_as_slabs(float *x, float *y, float *z, int **pid, long l
 
 	  free(send);
 	  free(rec);
-
-	  isend = (int*)malloc(sizeof(int)*nsend);
-	  irec = (int*)malloc(sizeof(int)*nrec);
-	  
-	  // ... then do IDs
-	  for(j=0;j<nsend;j++)
-	    isend[j]=pid[i][j];
-	  
-	  MPI_Sendrecv(isend,nsend,MPI_INT,i,ThisTask,
-		       irec,nrec,MPI_INT,i,i,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-	  
-	  for(j=0;j<nrec;j++)
-	    partid[j+noffset]=irec[j];
-
-	  free(isend);
-	  free(irec);
         }
       
     }
 
+  *NumPart=num_proc;
+  
+  for(i=0;i<*NumPart;i++)  
+    {
+      x[i]=posx[i];
+      y[i]=posy[i];
+      z[i]=posz[i];      
+    }
+  
+  free(posx);
+  free(posy);
+  free(posz);
+  
   float sumx,sumy,sumz;
   float xmin,ymin,zmin;
   float xmax,ymax,zmax;  
-
+  
   sumx=sumy=sumz=0.0;
   xmin=ymin=zmin=1.e10;
   xmax=ymax=zmax=-1.e10;
-	
-  for(i=0;i<num_proc;i++)
-    {
-      sumx+=posx[i];
-      sumy+=posy[i];
-      sumz+=posz[i];
-        
-      if(posx[i]>xmax) xmax=posx[i];
-      if(posy[i]>ymax) ymax=posy[i];
-      if(posz[i]>zmax) zmax=posz[i];
-      if(posx[i]<xmin) xmin=posx[i];
-      if(posy[i]<ymin) ymin=posy[i];
-      if(posz[i]<zmin) zmin=posz[i];
 
+  for(i=0;i<*NumPart;i++)
+    {
+      sumx+=x[i];
+      sumy+=y[i];
+      sumz+=z[i];
+      
+      if(posx[i]>xmax) xmax=x[i];
+      if(posy[i]>ymax) ymax=y[i];
+      if(posz[i]>zmax) zmax=z[i];
+      if(posx[i]<xmin) xmin=x[i];
+      if(posy[i]<ymin) ymin=y[i];
+      if(posz[i]<zmin) zmin=z[i];
     }
     
   sumx=sumx/(double)num_proc;
@@ -178,11 +195,5 @@ void split_across_tasks_as_slabs(float *x, float *y, float *z, int **pid, long l
   fprintf(stdout,"Boundaries on Task %d: (%g,%g) \n",ThisTask,xmin,xmax);
   fflush(stdout);
 
-  free(x);
-  free(y);
-  free(z);
-  
-  free(num_x);
-  */
-
 }
+#endif

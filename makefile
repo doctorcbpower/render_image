@@ -1,12 +1,16 @@
 OPT += -DCIC
-OPT += -DLONG_IDS
+#OPT += -DLONG_IDS
 #OPT += -DVELOCITIES
 #OPT += -DIMAGE
 #OPT += -DDEBUG
-OPT += -DENABLE_OPENMP
-OPT += -DKERNEL_SMOOTHING
+#OPT += -DENABLE_OPENMP
+#OPT += -DENABLE_MPI
+#OPT += -DSCATTER_DECOMPOSITION
+#OPT += -DNONPERIODIC
+#OPT += -DKERNEL_SMOOTHING
 
-COMPILE_ON_SYSTEM="MacPro"
+COMPILE_ON_SYSTEM="MacBook"
+#COMPILE_ON_SYSTEM="MacPro"
 #COMPILE_ON_SYSTEM="Magnus"
 #COMPILE_ON_SYSTEM="OzSTAR"
 
@@ -21,6 +25,19 @@ PNG_OPTS=-lpng
 HDF5_INCL=${EBROOTHDF5}/include -D H5_USE_16_API
 HDF5_LIBS=${EBROOTHDF5}/lib
 HDF5_OPTS=-lhdf5
+endif
+
+ifeq ($(COMPILE_ON_SYSTEM),"MacBook")
+CC=/opt/homebrew/bin/gcc-14
+FFTW_LIBS=/opt/local/lib
+FFTW_INCL=/opt/local/include
+FFTW_OPTS=-ldrfftw_mpi -ldrfftw -ldfftw_mpi -ldfftw -DDOUBLE_FFTW
+PNG_LIBS=/opt/homebrew/lib
+PNG_INCL=/opt/homebrew/include
+PNG_OPTS=-lpng
+HDF5_INCL=/opt/homebrew/include -D H5_USE_16_API
+HDF5_LIBS=/opt/homebrew/lib
+HDF5_OPTS=-lhdf5 -lz
 endif
 
 ifeq ($(COMPILE_ON_SYSTEM),"MacPro")
@@ -51,9 +68,9 @@ endif
 
 OPTS=-lm $(OPT) $(PNG_OPTS) $(HDF5_OPTS)
 
-render_image.exe : render_image.c io.c find_neighbours.c make_tree.c walk_tree.c kernels.c split_across_tasks.c select_particles.c header.c smooth_to_mesh.c write_to_image_file.c
-	gcc-9 -fopenmp -o render_image.exe $(OPTS) -I$(FFTW_INCL) -I$(HDF5_INCL) -I$(PNG_INCL) render_image.c io.c find_neighbours.c make_tree.c walk_tree.c kernels.c split_across_tasks.c select_particles.c header.c smooth_to_mesh.c write_to_image_file.c -L$(FFTW_LIBS) $(FFTW_OPTS) -L$(HDF5_LIBS) $(HDF5_OPTS) -L$(PNG_LIBS) $(PNG_OPTS)
+render_image.exe : render_image.c io.c find_neighbours.c make_tree.c walk_tree.c kernels.c split_across_tasks.c select_particles.c header.c smooth_to_mesh.c write_to_ppm.c
+	$(CC) -o render_image.exe -g $(OPTS) -I$(HDF5_INCL) -I$(PNG_INCL) render_image.c io.c find_neighbours.c make_tree.c walk_tree.c kernels.c split_across_tasks.c select_particles.c header.c smooth_to_mesh.c write_to_ppm.c -L$(HDF5_LIBS) $(HDF5_OPTS) -L$(PNG_LIBS) $(PNG_OPTS) 
 
 clean: 
 	rm render_image.exe
-	touch Makefile
+	touch makefile
